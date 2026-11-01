@@ -1,0 +1,51 @@
+package com.spendwise.model;
+
+import java.time.LocalDateTime;
+
+public class User {
+    private Long id;
+    private String displayName;
+    private String guestIdentifier;
+    private LocalDateTime createdAt;
+
+    public User() {}
+
+    public User(Long id, String displayName, String guestIdentifier, LocalDateTime createdAt) {
+        this.id = id;
+        this.displayName = displayName;
+        this.guestIdentifier = guestIdentifier;
+        this.createdAt = createdAt;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public String getGuestIdentifier() {
+        return guestIdentifier;
+    }
+
+    public void setGuestIdentifier(String guestIdentifier) {
+        this.guestIdentifier = guestIdentifier;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+}

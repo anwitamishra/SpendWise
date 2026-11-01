@@ -1,0 +1,7 @@
+/target/
+/data/
+/.github/modernize/
+*.log
+.env
+.env.*
+!.env.example

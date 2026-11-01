@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpendWise — Track your money. Split the moments.</title>
+    <meta name="description" content="SpendWise helps you manage personal finances and split shared group expenses with friends and roommates effortlessly.">
+    <script>
+        try {
+            document.documentElement.dataset.theme = localStorage.getItem('spendwise_theme') === 'dark' ? 'dark' : 'light';
+        } catch {
+            document.documentElement.dataset.theme = 'light';
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/style.css?v=transparent-modal-backdrop">
+</head>
+<body>
+
+<div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="brand-section">
+            <a href="#dashboard" class="brand-logo" onclick="app.navigate('dashboard')">
+                <div class="brand-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="brand-title">SpendWise</h1>
+                    <p class="brand-tagline">Split the moments</p>
+                </div>
+            </a>
+        </div>
+
+        <nav class="nav-menu">
+            <a class="nav-link active" data-view="dashboard" onclick="app.navigate('dashboard')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                Dashboard
+            </a>
+            <a class="nav-link" data-view="transactions" onclick="app.navigate('transactions')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                Personal Finance
+            </a>
+            <a class="nav-link" data-view="groups" onclick="app.navigate('groups')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                Shared Groups
+            </a>
+            <a class="nav-link" data-view="settings" onclick="app.navigate('settings')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                Settings
+            </a>
+        </nav>
+
+        <div class="sidebar-profile">
+            <div class="user-badge">
+                <div class="avatar" id="sidebarAvatar">G</div>
+                <div class="user-info">
+                    <span class="user-name" id="sidebarUserName">Guest User</span>
+                    <span class="user-guest-tag">Guest Session</span>
+                </div>
+            </div>
+            <button class="btn-icon-soft" title="Edit Display Name" onclick="app.openEditProfileModal()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <!-- Topbar -->
+        <header class="topbar">
+            <button class="mobile-menu-btn" aria-label="Toggle navigation menu" aria-controls="sidebar" onclick="app.toggleSidebar()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+
+            <div class="topbar-actions">
+                <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark theme" title="Switch to dark theme" onclick="app.toggleTheme()">
+                    <svg class="theme-icon-sun" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4"></circle>
+                        <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"></path>
+                    </svg>
+                    <svg class="theme-icon-moon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"></path>
+                    </svg>
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="app.openCreateGroupModal()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    New Group
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="app.openTransactionModal()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    New Transaction
+                </button>
+            </div>
+        </header>
+
+        <!-- Views Container -->
+        <div class="view-container">
+            <!-- ============================================== -->
+            <!-- 1. DASHBOARD VIEW -->
+            <!-- ============================================== -->
+            <section id="view-dashboard" class="view-section active">
+                <div class="page-header dashboard-header">
+                    <div>
+                        <p class="page-kicker">Your money, at a glance</p>
+                        <h2 class="page-title">A clearer view of your money</h2>
+                        <p class="page-subtitle">Your personal spending and shared plans, all in one place.</p>
+                    </div>
+                    <div class="dashboard-period">
+                        <label class="sr-only" for="dashPeriodSelect">Dashboard time period</label>
+                        <select id="dashPeriodSelect" class="form-control form-select" onchange="app.loadDashboard()">
+                            <option value="ALL">All Time</option>
+                            <option value="THIS_MONTH" selected>This Month</option>
+                            <option value="LAST_30_DAYS">Last 30 Days</option>
+                            <option value="THIS_YEAR">This Year</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-card income">
+                        <div class="metric-header">
+                            <span class="metric-title">Total Income</span>
+                            <div class="metric-icon-wrap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                    <polyline points="17 6 23 6 23 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="metric-amount" id="dashIncome">₹0.00</div>
+                        <div class="metric-caption">Personal income recorded</div>
+                    </div>
+
+                    <div class="metric-card expense">
+                        <div class="metric-header">
+                            <span class="metric-title">Total Expenses</span>
+                            <div class="metric-icon-wrap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+                                    <polyline points="17 18 23 18 23 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="metric-amount" id="dashExpenses">₹0.00</div>
+                        <div class="metric-caption">Personal spending recorded</div>
+                    </div>
+
+                    <div class="metric-card balance">
+                        <div class="metric-header">
+                            <span class="metric-title">Net Balance</span>
+                            <div class="metric-icon-wrap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                                    <line x1="2" y1="10" x2="22" y2="10"></line>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="metric-amount" id="dashBalance">₹0.00</div>
+                        <div class="metric-caption">Income minus expenses</div>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <div class="card chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Spending by Category</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="categoryDonutChart"></canvas>
+                            <div id="categoryChartEmpty" class="empty-state" style="display:none; width:100%; border:none; padding:20px;">
+                                <p class="empty-state-text">No expense records found for this period.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Income vs Expenses (Last 6 Months)</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="monthlyBarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Two-Column (Recent Transactions + Active Groups) -->
+                <div class="dash-bottom-grid">
+                    <div class="card">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+                            <h3 class="chart-title">Recent Transactions</h3>
+                            <button class="btn btn-outline btn-sm" onclick="app.navigate('transactions')">View All</button>
+                        </div>
+                        <div id="dashRecentTransactionsList">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+                            <h3 class="chart-title">Shared Groups & Balances</h3>
+                            <button class="btn btn-outline btn-sm" onclick="app.navigate('groups')">All Groups</button>
+                        </div>
+                        <div id="dashActiveGroupsList">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================== -->
+            <!-- 2. PERSONAL TRANSACTIONS VIEW -->
+            <!-- ============================================== -->
+            <section id="view-transactions" class="view-section">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Personal Finance</h2>
+                        <p class="page-subtitle">Track, filter, and manage your personal income and everyday expenses.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="app.openTransactionModal()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Add Transaction
+                    </button>
+                </div>
+
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div class="search-input-wrap">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="txSearchInput" class="form-control" placeholder="Search by title or description..." oninput="app.debounceLoadTransactions()">
+                    </div>
+
+                    <select id="txTypeFilter" class="form-control form-select" style="width: auto; min-width: 130px;" onchange="app.loadTransactions()">
+                        <option value="ALL">All Types</option>
+                        <option value="EXPENSE">Expense</option>
+                        <option value="INCOME">Income</option>
+                    </select>
+
+                    <select id="txCategoryFilter" class="form-control form-select" style="width: auto; min-width: 140px;" onchange="app.loadTransactions()">
+                        <option value="ALL">All Categories</option>
+                        <optgroup label="Expenses">
+                            <option value="Food">Food</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Education">Education</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Bills">Bills</option>
+                            <option value="Health">Health</option>
+                        </optgroup>
+                        <optgroup label="Income">
+                            <option value="Salary">Salary</option>
+                            <option value="Allowance">Allowance</option>
+                            <option value="Freelance">Freelance</option>
+                            <option value="Scholarship">Scholarship</option>
+                        </optgroup>
+                        <option value="Other">Other</option>
+                    </select>
+
+                    <select id="txSortBy" class="form-control form-select" style="width: auto; min-width: 130px;" onchange="app.loadTransactions()">
+                        <option value="date_desc">Newest First</option>
+                        <option value="date_asc">Oldest First</option>
+                        <option value="amount_desc">Highest Amount</option>
+                        <option value="amount_asc">Lowest Amount</option>
+                    </select>
+
+                    <button class="btn btn-outline btn-sm" onclick="app.resetTransactionFilters()">Reset</button>
+                </div>
+
+                <!-- Transactions Table Container -->
+                <div class="data-table-container">
+                    <table class="data-table" id="transactionsTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Type</th>
+                                <th style="text-align: right;">Amount</th>
+                                <th style="text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="transactionsEmptyState" class="empty-state" style="display:none;">
+                    <div class="empty-state-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                            <line x1="12" y1="8" x2="12" y2="16"></line>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                    </div>
+                    <h3 class="empty-state-title">No transactions found</h3>
+                    <p class="empty-state-text">Track your everyday spending or record your income to get started.</p>
+                    <button class="btn btn-primary" onclick="app.openTransactionModal()">Add Your First Transaction</button>
+                </div>
+            </section>
+
+            <!-- ============================================== -->
+            <!-- 3. SHARED GROUPS VIEW -->
+            <!-- ============================================== -->
+            <section id="view-groups" class="view-section">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Shared Groups</h2>
+                        <p class="page-subtitle">Collaborate with roommates, travel buddies, or friends on shared bills.</p>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-secondary" onclick="app.openJoinGroupModal()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                                <polyline points="10 17 15 12 10 7"></polyline>
+                                <line x1="15" y1="12" x2="3" y2="12"></line>
+                            </svg>
+                            Join with Code
+                        </button>
+                        <button class="btn btn-primary" onclick="app.openCreateGroupModal()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Create Group
+                        </button>
+                    </div>
+                </div>
+
+                <div class="groups-grid" id="groupsGrid">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <div id="groupsEmptyState" class="empty-state" style="display:none;">
+                    <div class="empty-state-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <h3 class="empty-state-title">No shared groups yet</h3>
+                    <p class="empty-state-text">Create a group for an apartment, a weekend trip, or join a friend's group with an invitation link.</p>
+                    <button class="btn btn-primary" onclick="app.openCreateGroupModal()">Create a New Group</button>
+                </div>
+            </section>
+
+            <!-- ============================================== -->
+            <!-- 4. GROUP DETAILS VIEW -->
+            <!-- ============================================== -->
+            <section id="view-group-detail" class="view-section">
+                <div style="margin-bottom: 20px;">
+                    <button class="btn btn-outline btn-sm" onclick="app.navigate('groups')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                        Back to All Groups
+                    </button>
+                </div>
+
+                <!-- Group Banner -->
+                <div class="group-header-banner">
+                    <div>
+                        <h2 class="page-title" id="gdGroupName">Group Name</h2>
+                        <p class="page-subtitle" id="gdGroupDesc" style="margin-top:6px;">Group description</p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <div class="invite-pill">
+                            <span>Code: <strong id="gdInviteCode">SW-XXXX</strong></span>
+                            <button class="copy-btn" title="Copy Invite Code" onclick="app.copyInviteCode()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="app.copyInviteLink()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                            </svg>
+                            Share Link
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="app.openExpenseModal()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Add Shared Expense
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Balances and Settlement Section -->
+                <div class="balances-grid">
+                    <!-- Members & Balances -->
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Member Balances</h3>
+                            <span class="badge badge-category" id="gdTotalSpentBadge">Total Spent: ₹0.00</span>
+                        </div>
+                        <div id="gdBalancesList">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Simplified Settlement Suggestions -->
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Suggested Settlements</h3>
+                            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">MIN-CASH-FLOW</span>
+                        </div>
+                        <div id="gdSettlementsList">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expense History Table -->
+                <div class="card">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+                        <div>
+                            <h3 class="chart-title">Expense History</h3>
+                            <p class="page-subtitle">All shared bills, who paid, and how they were divided.</p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="app.openExpenseModal()">+ Add Expense</button>
+                    </div>
+
+                    <div class="data-table-container">
+                        <table class="data-table" id="gdExpensesTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Paid By</th>
+                                    <th>Split Type</th>
+                                    <th style="text-align: right;">Total Amount</th>
+                                    <th style="text-align: center;">Participants & Shares</th>
+                                    <th style="text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="gdExpensesTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="gdExpensesEmptyState" class="empty-state" style="display:none;">
+                        <h4 class="empty-state-title">No expenses recorded yet</h4>
+                        <p class="empty-state-text">Add your first shared expense to start splitting bills transparently.</p>
+                        <button class="btn btn-primary btn-sm" onclick="app.openExpenseModal()">Add Shared Expense</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================== -->
+            <!-- 5. SETTINGS / PROFILE VIEW -->
+            <!-- ============================================== -->
+            <section id="view-settings" class="view-section">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Profile & Preferences</h2>
+                        <p class="page-subtitle">Manage your profile and account preferences.</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid">
+                    <div class="card">
+                        <h3 class="chart-title" style="margin-bottom:16px;">Your Profile</h3>
+                        <div class="form-group">
+                            <label class="form-label">Display Name</label>
+                            <input type="text" id="settingsDisplayName" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Unique Guest Identifier</label>
+                            <input type="text" id="settingsGuestId" class="form-control" disabled style="opacity: 0.7; font-family: monospace;">
+                            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Persisted in your browser's local storage.</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="app.saveProfileSettings()">Save Changes</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Luxury Footer -->
+        <footer class="app-footer">
+            <div class="footer-content">
+                <span class="footer-brand">SpendWise</span>
+                <span class="footer-tagline">Track your money. Split the moments.</span>
+            </div>
+        </footer>
+    </main>
+</div>
+
+<!-- ============================================== -->
+<!-- MODALS -->
+<!-- ============================================== -->
+
+<!-- 1. Modal: Personal Transaction (Add / Edit) -->
+<div class="modal-overlay" id="modalTransaction">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 class="modal-title" id="txModalTitle">Add Transaction</h3>
+            <button class="modal-close" onclick="app.closeModal('modalTransaction')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="txId">
+            <div class="segmented-control">
+                <button type="button" class="segmented-btn active" id="txTypeExpenseBtn" onclick="app.setTxType('EXPENSE')">Expense</button>
+                <button type="button" class="segmented-btn" id="txTypeIncomeBtn" onclick="app.setTxType('INCOME')">Income</button>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Title / Payee</label>
+                <input type="text" id="txTitle" class="form-control" placeholder="e.g. Grocery Store, Metro Pass, Monthly Stipend">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Amount (₹)</label>
+                    <input type="number" step="0.01" min="0.01" id="txAmount" class="form-control" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" id="txDate" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select id="txCategory" class="form-control form-select">
+                    <!-- Populated dynamically based on type -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Notes (Optional)</label>
+                <textarea id="txDescription" class="form-control" rows="2" placeholder="Optional notes or details..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="app.closeModal('modalTransaction')">Cancel</button>
+            <button class="btn btn-primary" onclick="app.saveTransaction()">Save Transaction</button>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Modal: Create Group -->
+<div class="modal-overlay" id="modalCreateGroup">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 class="modal-title">Create New Group</h3>
+            <button class="modal-close" onclick="app.closeModal('modalCreateGroup')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Group Name</label>
+                <input type="text" id="cgName" class="form-control" placeholder="e.g. Goa Trip, Flat 402, Birthday Dinner">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description (Optional)</label>
+                <textarea id="cgDescription" class="form-control" rows="2" placeholder="What is this group for?"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="app.closeModal('modalCreateGroup')">Cancel</button>
+            <button class="btn btn-primary" onclick="app.saveCreateGroup()">Create Group</button>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Modal: Join Group -->
+<div class="modal-overlay" id="modalJoinGroup">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 class="modal-title">Join a Group</h3>
+            <button class="modal-close" onclick="app.closeModal('modalJoinGroup')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Invitation Code</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" id="jgCode" class="form-control" placeholder="e.g. SW-9X4K2" style="text-transform:uppercase;">
+                    <button class="btn btn-secondary" onclick="app.previewGroupCode()">Verify</button>
+                </div>
+            </div>
+
+            <div id="jgPreviewBox" style="display:none; padding:14px; background:var(--creme-light); border-radius:var(--radius-sm); border:1px solid var(--sand); margin-top:14px;">
+                <h4 id="jgPreviewTitle" style="font-family:var(--font-serif); color:var(--burgundy); margin-bottom:4px;">Group Name</h4>
+                <p id="jgPreviewDesc" style="font-size:0.84rem; color:var(--text-secondary); margin-bottom:6px;">Description</p>
+                <span class="badge badge-category" id="jgPreviewCount">3 Members</span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="app.closeModal('modalJoinGroup')">Cancel</button>
+            <button class="btn btn-primary" id="jgConfirmBtn" onclick="app.confirmJoinGroup()">Join Group</button>
+        </div>
+    </div>
+</div>
+
+<!-- 4. Modal: Add / Edit Shared Expense -->
+<div class="modal-overlay" id="modalExpense">
+    <div class="modal-box" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3 class="modal-title" id="expModalTitle">Add Shared Expense</h3>
+            <button class="modal-close" onclick="app.closeModal('modalExpense')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="expId">
+
+            <div class="form-group">
+                <label class="form-label">Expense Description</label>
+                <input type="text" id="expDescription" class="form-control" placeholder="e.g. Dinner at Olive, Grocery Run, Cab to Airport">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Total Amount (₹)</label>
+                    <input type="number" step="0.01" min="0.01" id="expAmount" class="form-control" placeholder="0.00" oninput="app.recalcSplitShares()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Paid By</label>
+                    <select id="expPaidBy" class="form-control form-select">
+                        <!-- Populated with group members -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Expense Date</label>
+                    <input type="date" id="expDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notes (Optional)</label>
+                    <input type="text" id="expNotes" class="form-control" placeholder="Optional notes">
+                </div>
+            </div>
+
+            <!-- Split Method Tabs -->
+            <label class="form-label" style="margin-top:10px;">Splitting Method</label>
+            <div class="segmented-control">
+                <button type="button" class="segmented-btn active" id="expSplitEqualBtn" onclick="app.setSplitMethod('EQUAL')">Equal Split</button>
+                <button type="button" class="segmented-btn" id="expSplitCustomBtn" onclick="app.setSplitMethod('CUSTOM')">Custom Split</button>
+            </div>
+
+            <!-- Equal Split Options -->
+            <div id="splitEqualContainer">
+                <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:10px;">
+                    Select who participates in this expense. The total will be distributed equally down to the exact cent.
+                </p>
+                <div id="splitEqualParticipantsList">
+                    <!-- Checkboxes populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Custom Split Options -->
+            <div id="splitCustomContainer" style="display:none;">
+                <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:10px;">
+                    Manually specify each participant's share. The sum must exactly match the total expense.
+                </p>
+                <div id="splitCustomParticipantsList">
+                    <!-- Inputs populated dynamically -->
+                </div>
+                <div id="customSplitIndicator" class="split-validation-indicator unmatched">
+                    <span id="customSplitStatusText">Remaining to allocate: ₹0.00</span>
+                    <span id="customSplitTotalText">Total: ₹0.00 / ₹0.00</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="app.closeModal('modalExpense')">Cancel</button>
+            <button class="btn btn-primary" onclick="app.saveExpense()">Save Expense</button>
+        </div>
+    </div>
+</div>
+
+<!-- 5. Modal: Confirm Action (Reusable) -->
+<div class="modal-overlay" id="modalConfirm">
+    <div class="modal-box" style="max-width: 440px;">
+        <div class="modal-header">
+            <h3 class="modal-title" id="confirmModalTitle">Confirm Action</h3>
+            <button class="modal-close" onclick="app.closeModal('modalConfirm')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="confirmModalMessage" style="font-size:0.92rem; color:var(--text-secondary);">Are you sure you want to proceed?</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="app.closeModal('modalConfirm')">Cancel</button>
+            <button class="btn btn-danger" id="confirmModalActionBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- 6. Modal: Edit Profile -->
+<div class="modal-overlay" id="modalEditProfile">
+    <div class="modal-box" style="max-width: 420px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Edit Display Name</h3>
+            <button class="modal-close" onclick="app.closeModal('modalEditProfile')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Display Name</label>
+                <input type="text" id="modalProfileName" class="form-control" placeholder="Enter your name">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="app.closeModal('modalEditProfile')">Cancel</button>
+            <button class="btn btn-primary" onclick="app.saveProfileModal()">Save Name</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Custom JS Application Logic -->
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+
+</body>
+</html>
