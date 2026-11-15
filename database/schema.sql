@@ -11,7 +11,34 @@ CREATE TABLE IF NOT EXISTS users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     display_name VARCHAR(100) NOT NULL,
     guest_identifier VARCHAR(64) NOT NULL UNIQUE,
+    username VARCHAR(30) UNIQUE,
+    email VARCHAR(254) UNIQUE,
+    password_hash VARCHAR(100),
+    reset_token_hash VARCHAR(64),
+    reset_token_expires_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS auth_sessions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    token_hash VARCHAR(64) NOT NULL UNIQUE,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_auth_session_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS password_change_otps (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    purpose VARCHAR(40) NOT NULL,
+    otp_hash VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    verified_at TIMESTAMP NULL,
+    consumed_at TIMESTAMP NULL,
+    CONSTRAINT fk_password_change_otp_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- 2. Personal Transactions Table
@@ -87,6 +114,44 @@ CREATE TABLE IF NOT EXISTS expense_splits (
     CONSTRAINT uk_expense_member UNIQUE (expense_id, member_id)
 );
 
+CREATE TABLE IF NOT EXISTS group_expense_contributions (
+    expense_id BIGINT NOT NULL,
+    member_id BIGINT NOT NULL,
+    amount_paid DECIMAL(12, 2) NOT NULL,
+    CONSTRAINT fk_gec_expense FOREIGN KEY (expense_id) REFERENCES group_expenses(id) ON DELETE CASCADE,
+    CONSTRAINT fk_gec_member FOREIGN KEY (member_id) REFERENCES group_members(id) ON DELETE CASCADE,
+    CONSTRAINT uk_expense_contribution_member UNIQUE (expense_id, member_id)
+);
+
+CREATE TABLE IF NOT EXISTS group_expense_items (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    expense_id BIGINT NOT NULL,
+    description VARCHAR(150) NOT NULL,
+    amount DECIMAL(12, 2) NOT NULL,
+    CONSTRAINT fk_gei_expense FOREIGN KEY (expense_id) REFERENCES group_expenses(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS group_expense_item_members (
+    item_id BIGINT NOT NULL,
+    member_id BIGINT NOT NULL,
+    CONSTRAINT fk_geim_item FOREIGN KEY (item_id) REFERENCES group_expense_items(id) ON DELETE CASCADE,
+    CONSTRAINT fk_geim_member FOREIGN KEY (member_id) REFERENCES group_members(id) ON DELETE CASCADE,
+    CONSTRAINT uk_item_member UNIQUE (item_id, member_id)
+);
+
+CREATE TABLE IF NOT EXISTS group_receipt_uploads (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    group_id BIGINT NOT NULL,
+    uploaded_by BIGINT NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    storage_key VARCHAR(80) NOT NULL UNIQUE,
+    content_type VARCHAR(100) NOT NULL,
+    file_size BIGINT NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_receipt_group FOREIGN KEY (group_id) REFERENCES expense_groups(id) ON DELETE CASCADE,
+    CONSTRAINT fk_receipt_uploader FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE INDEX idx_es_expense ON expense_splits (expense_id);
 CREATE INDEX idx_es_member ON expense_splits (member_id);
 
@@ -97,7 +162,8 @@ CREATE TABLE IF NOT EXISTS settlements (
     from_member_id BIGINT NOT NULL,
     to_member_id BIGINT NOT NULL,
     amount DECIMAL(12, 2) NOT NULL,
-    settled_date DATE NOT NULL,
+    settled_date DATE NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
     notes VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_st_group FOREIGN KEY (group_id) REFERENCES expense_groups(id) ON DELETE CASCADE,

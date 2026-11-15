@@ -135,6 +135,8 @@ Once started, open your browser and navigate to:
 http://localhost:8080
 ```
 
+You can use SpendWise as a guest or create an account with a username, email, and password. Passwords are stored as BCrypt hashes. Forgot-password links expire after 30 minutes; changing a password from Settings requires an authenticated 6-digit email code that expires after 5 minutes. To enable these email workflows, configure Spring Mail environment variables before starting the app (for example `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, and `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true`). Set `SPENDWISE_MAIL_FROM` and `SPENDWISE_PUBLIC_URL` if needed. Do not commit SMTP credentials.
+
 ### Running with MySQL 8
 
 1. Open MySQL and create the database:

@@ -7,8 +7,10 @@ import com.spendwise.model.ExpenseGroup;
 import com.spendwise.model.GroupMember;
 import com.spendwise.model.MemberBalance;
 import com.spendwise.model.SettlementSuggestion;
+import com.spendwise.model.GroupSettlement;
 import com.spendwise.service.BalanceCalculationService;
 import com.spendwise.service.ExpenseGroupService;
+import com.spendwise.service.GroupSettlementService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,10 +25,13 @@ public class ExpenseGroupController {
 
     private final ExpenseGroupService groupService;
     private final BalanceCalculationService balanceService;
+    private final GroupSettlementService settlementService;
 
-    public ExpenseGroupController(ExpenseGroupService groupService, BalanceCalculationService balanceService) {
+    public ExpenseGroupController(ExpenseGroupService groupService, BalanceCalculationService balanceService,
+                                  GroupSettlementService settlementService) {
         this.groupService = groupService;
         this.balanceService = balanceService;
+        this.settlementService = settlementService;
     }
 
     @PostMapping
@@ -90,5 +95,32 @@ public class ExpenseGroupController {
         response.put("settlements", settlements);
 
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/{id}/settlements")
+    public ResponseEntity<ApiResponse<List<GroupSettlement>>> getSettlements(
+            @RequestHeader("X-Guest-Id") String guestIdentifier, @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(settlementService.list(guestIdentifier, id)));
+    }
+
+    @PostMapping("/{id}/settlements/suggestions")
+    public ResponseEntity<ApiResponse<List<GroupSettlement>>> createSuggestedSettlements(
+            @RequestHeader("X-Guest-Id") String guestIdentifier, @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok("Pending settlement plan updated", settlementService.createPendingPlan(guestIdentifier, id)));
+    }
+
+    @PostMapping("/{id}/settlements/{settlementId}/complete")
+    public ResponseEntity<ApiResponse<GroupSettlement>> completeSettlement(
+            @RequestHeader("X-Guest-Id") String guestIdentifier,
+            @PathVariable Long id, @PathVariable Long settlementId) {
+        return ResponseEntity.ok(ApiResponse.ok("Settlement marked complete", settlementService.complete(guestIdentifier, id, settlementId)));
+    }
+
+    @DeleteMapping("/{id}/settlements/{settlementId}")
+    public ResponseEntity<ApiResponse<Void>> cancelSettlement(
+            @RequestHeader("X-Guest-Id") String guestIdentifier,
+            @PathVariable Long id, @PathVariable Long settlementId) {
+        settlementService.cancel(guestIdentifier, id, settlementId);
+        return ResponseEntity.ok(ApiResponse.ok("Pending settlement cancelled", null));
     }
 }

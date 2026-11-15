@@ -3,6 +3,7 @@ package com.spendwise.repository;
 import com.spendwise.model.ExpenseSplit;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
@@ -19,7 +20,7 @@ public class ExpenseSplitRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    private final RowMapper<ExpenseSplit> splitRowMapper = (rs, rowNum) -> {
+    private final @NonNull RowMapper<ExpenseSplit> splitRowMapper = (rs, rowNum) -> {
         ExpenseSplit split = new ExpenseSplit();
         split.setId(rs.getLong("id"));
         split.setExpenseId(rs.getLong("expense_id"));
@@ -53,15 +54,16 @@ public class ExpenseSplitRepository {
     }
 
     public Map<Long, BigDecimal> getTotalPaidByMember(Long groupId) {
-        String sql = "SELECT paid_by AS member_id, COALESCE(SUM(total_amount), 0) AS total_paid " +
-                "FROM group_expenses WHERE group_id = ? GROUP BY paid_by";
-
         Map<Long, BigDecimal> map = new HashMap<>();
-        jdbcTemplate.query(sql, (rs) -> {
-            long memberId = rs.getLong("member_id");
-            BigDecimal total = rs.getBigDecimal("total_paid");
-            map.put(memberId, total != null ? total : BigDecimal.ZERO);
-        }, groupId);
+        jdbcTemplate.query("SELECT gec.member_id, SUM(gec.amount_paid) AS total_paid " +
+                "FROM group_expense_contributions gec JOIN group_expenses ge ON ge.id = gec.expense_id " +
+                "WHERE ge.group_id = ? GROUP BY gec.member_id",
+                rs -> { map.put(rs.getLong("member_id"), rs.getBigDecimal("total_paid")); }, groupId);
+        jdbcTemplate.query("SELECT ge.paid_by AS member_id, SUM(ge.total_amount) AS total_paid " +
+                "FROM group_expenses ge WHERE ge.group_id = ? " +
+                "AND NOT EXISTS (SELECT 1 FROM group_expense_contributions gec WHERE gec.expense_id = ge.id) " +
+                "GROUP BY ge.paid_by",
+                rs -> { map.merge(rs.getLong("member_id"), rs.getBigDecimal("total_paid"), (left, right) -> left.add(right)); }, groupId);
         return map;
     }
 

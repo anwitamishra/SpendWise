@@ -119,7 +119,8 @@ public class PersonalTransactionService {
 
         BigDecimal income = totals.getOrDefault("INCOME", BigDecimal.ZERO).setScale(2, java.math.RoundingMode.HALF_UP);
         BigDecimal expense = totals.getOrDefault("EXPENSE", BigDecimal.ZERO).setScale(2, java.math.RoundingMode.HALF_UP);
-        BigDecimal balance = income.subtract(expense).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal balance = income.subtract(expense).max(BigDecimal.ZERO)
+            .setScale(2, java.math.RoundingMode.HALF_UP);
 
         Map<String, Object> summary = new HashMap<>();
         summary.put("totalIncome", income);

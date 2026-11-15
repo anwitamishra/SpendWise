@@ -19,9 +19,61 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/css/style.css?v=transparent-modal-backdrop">
+    <link rel="stylesheet" href="/css/style.css?v=universal-smart-split">
 </head>
 <body>
+
+<section class="auth-gate" id="authGate" aria-label="SpendWise account access">
+    <div class="auth-panel-shell">
+        <div class="auth-brand"><span class="auth-brand-mark">S</span><span>SpendWise</span></div>
+        <div class="auth-panel" id="authLoginPanel" data-auth-panel>
+            <p class="auth-eyebrow">WELCOME BACK</p>
+            <h1>Good to see you.</h1>
+            <p class="auth-copy">Sign in to pick up where you left off.</p>
+            <form onsubmit="app.submitLogin(event)">
+                <div class="form-group"><label class="form-label" for="authLoginEmail">Username or email</label><input id="authLoginEmail" class="form-control" autocomplete="username" required></div>
+                <div class="form-group"><label class="form-label" for="authLoginPassword">Password</label><div class="password-field"><input id="authLoginPassword" class="form-control" type="password" autocomplete="current-password" required><button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" onclick="app.togglePasswordVisibility('authLoginPassword', this)">Show</button></div></div>
+                <button class="btn btn-primary auth-submit" type="submit">Sign in</button>
+            </form>
+            <div class="auth-links"><button type="button" class="auth-text-button" onclick="app.showAuthGate('forgot')">Forgot password?</button><button type="button" class="auth-text-button" onclick="app.showAuthGate('register')">Create an account</button></div>
+            <button type="button" class="auth-guest-link" onclick="app.continueAsGuest()">Continue as guest instead</button>
+        </div>
+        <div class="auth-panel" id="authRegisterPanel" data-auth-panel hidden>
+            <p class="auth-eyebrow">YOUR FINANCES, TOGETHER</p>
+            <h1>Create your account.</h1>
+            <p class="auth-copy">Your current guest data stays with this account.</p>
+            <form onsubmit="app.submitRegister(event)">
+                <div class="form-group"><label class="form-label" for="authRegisterName">Display name</label><input id="authRegisterName" class="form-control" autocomplete="name" maxlength="100" required></div>
+                <div class="form-group"><label class="form-label" for="authRegisterUsername">Username</label><input id="authRegisterUsername" class="form-control" autocomplete="username" minlength="3" maxlength="30" pattern="[A-Za-z0-9_]{3,30}" required><small class="auth-hint">3–30 letters, numbers, or underscores.</small></div>
+                <div class="form-group"><label class="form-label" for="authRegisterEmail">Email</label><input id="authRegisterEmail" class="form-control" type="email" autocomplete="email" required></div>
+                <div class="form-group"><label class="form-label" for="authRegisterPassword">Password</label><div class="password-field"><input id="authRegisterPassword" class="form-control" type="password" minlength="10" maxlength="72" autocomplete="new-password" required><button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" onclick="app.togglePasswordVisibility('authRegisterPassword', this)">Show</button></div><small class="auth-hint">Use at least 10 characters.</small></div>
+                <button class="btn btn-primary auth-submit" type="submit">Create account</button>
+            </form>
+            <p class="auth-switch-copy">Already have an account? <button type="button" class="auth-text-button" onclick="app.showAuthGate('login')">Sign in</button></p>
+        </div>
+        <div class="auth-panel" id="authForgotPanel" data-auth-panel hidden>
+            <p class="auth-eyebrow">ACCOUNT RECOVERY</p>
+            <h1>Reset your password.</h1>
+            <p class="auth-copy">We’ll email you a secure link if an account matches.</p>
+            <form onsubmit="app.submitForgotPassword(event)">
+                <div class="form-group"><label class="form-label" for="authForgotEmail">Email</label><input id="authForgotEmail" class="form-control" type="email" autocomplete="email" required></div>
+                <button class="btn btn-primary auth-submit" type="submit">Send reset link</button>
+            </form>
+            <button type="button" class="auth-guest-link" onclick="app.showAuthGate('login')">Back to sign in</button>
+        </div>
+        <div class="auth-panel" id="authResetPanel" data-auth-panel hidden>
+            <p class="auth-eyebrow">ACCOUNT RECOVERY</p>
+            <h1>Choose a new password.</h1>
+            <form onsubmit="app.submitResetPassword(event)">
+                <div class="form-group"><label class="form-label" for="authResetPassword">New password</label><div class="password-field"><input id="authResetPassword" class="form-control" type="password" minlength="10" maxlength="72" autocomplete="new-password" required><button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" onclick="app.togglePasswordVisibility('authResetPassword', this)">Show</button></div></div>
+                <button class="btn btn-primary auth-submit" type="submit">Update password</button>
+            </form>
+            <button type="button" class="auth-guest-link" onclick="app.showAuthGate('login')">Back to sign in</button>
+        </div>
+        <p class="auth-feedback" id="authFeedback" role="status" aria-live="polite"></p>
+        <p class="auth-footnote">Private by design. Your data stays yours.</p>
+    </div>
+</section>
 
 <div class="app-container">
     <!-- Sidebar -->
@@ -80,7 +132,7 @@
                 <div class="avatar" id="sidebarAvatar">G</div>
                 <div class="user-info">
                     <span class="user-name" id="sidebarUserName">Guest User</span>
-                    <span class="user-guest-tag">Guest Session</span>
+                        <span class="user-guest-tag" id="sidebarAccountStatus">Guest Session</span>
                 </div>
             </div>
             <button class="btn-icon-soft" title="Edit Display Name" onclick="app.openEditProfileModal()">
@@ -144,10 +196,11 @@
                         <p class="page-subtitle">Your personal spending and shared plans, all in one place.</p>
                     </div>
                     <div class="dashboard-period">
+                        <button class="btn btn-primary" type="button" onclick="app.openTransactionModal(null, 'INCOME')">Add Income</button>
                         <label class="sr-only" for="dashPeriodSelect">Dashboard time period</label>
                         <select id="dashPeriodSelect" class="form-control form-select" onchange="app.loadDashboard()">
-                            <option value="ALL">All Time</option>
-                            <option value="THIS_MONTH" selected>This Month</option>
+                            <option value="ALL" selected>All Time</option>
+                            <option value="THIS_MONTH">This Month</option>
                             <option value="LAST_30_DAYS">Last 30 Days</option>
                             <option value="THIS_YEAR">This Year</option>
                         </select>
@@ -438,7 +491,24 @@
                     </div>
                 </div>
 
+                <nav class="group-tabs" aria-label="Group sections">
+                    <button class="group-tab active" data-group-tab="overview" onclick="app.showGroupTab('overview')">Overview</button>
+                    <button class="group-tab" data-group-tab="expenses" onclick="app.showGroupTab('expenses')">Expenses</button>
+                    <button class="group-tab" data-group-tab="balances" onclick="app.showGroupTab('balances')">Balances</button>
+                    <button class="group-tab" data-group-tab="smart-split" onclick="app.showGroupTab('smart-split')">Smart Split</button>
+                </nav>
+
+                <div class="group-tab-panel active" id="gdTabOverview">
+                    <div class="smart-overview-grid">
+                        <article class="card smart-overview-card"><span class="settings-meta-label">Group spending</span><strong id="gdOverviewSpent">₹0.00</strong><p>All shared expenses across this group.</p></article>
+                        <article class="card smart-overview-card"><span class="settings-meta-label">Members</span><strong id="gdOverviewMembers">0</strong><p>Split any expense across all or selected members.</p></article>
+                        <article class="card smart-overview-card"><span class="settings-meta-label">Smart Split</span><strong>One group, any purpose</strong><p>Dining, shopping, roommates, entertainment, travel, events and more.</p></article>
+                    </div>
+                    <div class="card smart-overview-help"><h3 class="chart-title">Your group, made flexible</h3><p class="page-subtitle">Record equal or custom shares, itemize a receipt by person, and organize exact settlements without changing how your group was created.</p><button class="btn btn-primary btn-sm" onclick="app.showGroupTab('smart-split')">Create a Smart Split</button></div>
+                </div>
+
                 <!-- Balances and Settlement Section -->
+                <div class="group-tab-panel" id="gdTabBalances">
                 <div class="balances-grid">
                     <!-- Members & Balances -->
                     <div class="card">
@@ -462,9 +532,14 @@
                         </div>
                     </div>
                 </div>
+                <div class="card settlement-tracking-card">
+                    <div class="chart-header"><div><h3 class="chart-title">Settlement tracking</h3><p class="page-subtitle">Keep track of suggested payments and confirm them when paid.</p></div><button class="btn btn-outline btn-sm" onclick="app.generateSettlementPlan()">Update pending plan</button></div>
+                    <div id="gdTrackedSettlements"><p class="empty-state-text">No settlement records yet.</p></div>
+                </div>
+                </div>
 
                 <!-- Expense History Table -->
-                <div class="card">
+                <div class="group-tab-panel" id="gdTabExpenses"><div class="card">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
                         <div>
                             <h3 class="chart-title">Expense History</h3>
@@ -497,6 +572,35 @@
                         <p class="empty-state-text">Add your first shared expense to start splitting bills transparently.</p>
                         <button class="btn btn-primary btn-sm" onclick="app.openExpenseModal()">Add Shared Expense</button>
                     </div>
+                </div></div>
+
+                <div class="group-tab-panel" id="gdTabSmartSplit">
+                    <div class="smart-split-layout">
+                        <div class="card smart-split-card">
+                            <div class="smart-split-heading"><div><span class="security-step-label">FLEXIBLE BILL SHARING</span><h3 class="chart-title">Create a Smart Split</h3><p class="page-subtitle">One flow for any shared expense—choose how every member's share is calculated.</p></div></div>
+                            <form id="smartSplitForm" onsubmit="app.saveSmartSplit(event)">
+                                <input id="smartSplitExpenseId" type="hidden">
+                                <div class="form-row">
+                                    <div class="form-group"><label class="form-label" for="smartSplitDescription">Expense title</label><input id="smartSplitDescription" class="form-control" maxlength="200" placeholder="Dinner, groceries, tickets…" required></div>
+                                    <div class="form-group"><label class="form-label" for="smartSplitAmount">Total amount (₹)</label><input id="smartSplitAmount" class="form-control" type="number" min="0.01" step="0.01" placeholder="0.00" oninput="app.updateSmartSplitPreview()" required></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group" id="smartSplitPayerField"><label class="form-label" for="smartSplitPayer">Paid by</label><select id="smartSplitPayer" class="form-control form-select" required></select></div>
+                                    <div class="form-group"><label class="form-label" for="smartSplitDate">Date</label><input id="smartSplitDate" class="form-control" type="date" required></div>
+                                </div>
+                                <div class="form-group"><label class="form-label" for="smartSplitMethod">Split method</label><select id="smartSplitMethod" class="form-control form-select" onchange="app.renderSmartSplitMethod()"><option value="CONTRIBUTION_EQUAL">Enter what each person paid · split equally</option><option value="EQUAL">Equal among selected members</option><option value="CUSTOM">Custom amounts</option><option value="PERCENTAGE">Percentage-based</option><option value="ITEMIZED">Item-wise with member assignments</option></select></div>
+                                <div id="smartSplitAllocations"></div>
+                                <div class="smart-split-preview" id="smartSplitPreview">Select a split method to see allocations.</div>
+                                <div class="form-group"><label class="form-label" for="smartSplitNotes">Notes (optional)</label><textarea id="smartSplitNotes" class="form-control" rows="2" maxlength="1000" placeholder="Add context for the group"></textarea></div>
+                                <button class="btn btn-primary" type="submit">Save shared expense</button>
+                            </form>
+                        </div>
+                        <aside class="card receipt-upload-card">
+                            <span class="security-step-label">RECEIPT VAULT</span><h3 class="chart-title">Save a receipt</h3><p class="page-subtitle">Upload a JPG, PNG, WEBP, or PDF. The file is stored privately with this group and can be used for future expense extraction.</p>
+                            <form onsubmit="app.uploadGroupReceipt(event)"><div class="form-group"><label class="form-label" for="groupReceiptFile">Bill or receipt</label><input id="groupReceiptFile" class="form-control" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></div><button class="btn btn-secondary btn-sm" type="submit">Upload receipt</button></form>
+                            <div class="receipt-list" id="groupReceiptList"><p class="empty-state-text">No receipts uploaded yet.</p></div>
+                        </aside>
+                    </div>
                 </div>
             </section>
 
@@ -519,11 +623,54 @@
                             <input type="text" id="settingsDisplayName" class="form-control">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Unique Guest Identifier</label>
+                            <label class="form-label">Email address</label>
+                            <input type="email" id="settingsEmail" class="form-control" disabled style="opacity: 0.7;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Username</label>
+                            <input type="text" id="settingsUsername" class="form-control" disabled style="opacity: 0.7;">
+                        </div>
+                        <div class="settings-meta-grid">
+                            <div><span class="settings-meta-label">Account type</span><strong id="settingsAccountType">Guest</strong></div>
+                            <div><span class="settings-meta-label">Member since</span><strong id="settingsMemberSince">—</strong></div>
+                        </div>
+                        <div class="form-group" style="margin-top:16px;">
+                            <label class="form-label">Guest identifier</label>
                             <input type="text" id="settingsGuestId" class="form-control" disabled style="opacity: 0.7; font-family: monospace;">
-                            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Persisted in your browser's local storage.</p>
+                            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Your existing guest data is linked to your account when you register.</p>
                         </div>
                         <button class="btn btn-primary" onclick="app.saveProfileSettings()">Save Changes</button>
+                    </div>
+                    <div class="card settings-security-card">
+                        <h3 class="chart-title" style="margin-bottom:8px;">Account security</h3>
+                        <p class="settings-description" id="settingsSecurityDescription">Create an account to secure your profile and access it across sessions.</p>
+                        <div id="settingsGuestActions"><button class="btn btn-primary" onclick="app.openAuthGate('register')">Create an account</button><button class="btn btn-outline" style="margin-left:8px;" onclick="app.openAuthGate('login')">Sign in</button></div>
+                        <div id="settingsAccountActions" hidden>
+                            <button class="btn btn-primary" id="settingsStartPasswordChange" type="button" onclick="app.startPasswordChange()">Change Password</button>
+                            <button class="btn btn-outline" style="margin-left:8px;" type="button" onclick="app.signOut()">Sign out</button>
+                        </div>
+                        <div class="password-change-flow" id="passwordChangeFlow" hidden>
+                            <div class="password-change-step" id="passwordOtpStep" hidden>
+                                <span class="security-step-label">EMAIL VERIFICATION</span>
+                                <p class="settings-description">Enter the 6-digit code sent to <strong id="passwordOtpMaskedEmail"></strong>.</p>
+                                <form onsubmit="app.verifyPasswordChangeOtp(event)">
+                                    <div class="form-group"><label class="form-label" for="passwordChangeOtp">Verification code</label><input id="passwordChangeOtp" class="form-control otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required></div>
+                                    <p class="otp-countdown" id="passwordOtpCountdown" aria-live="polite"></p>
+                                    <div class="security-actions"><button class="btn btn-primary" type="submit">Verify code</button><button class="btn btn-outline" id="passwordOtpResend" type="button" onclick="app.resendPasswordChangeOtp()" disabled>Resend code</button></div>
+                                </form>
+                            </div>
+                            <div class="password-change-step" id="passwordNewPasswordStep" hidden>
+                                <span class="security-step-label">SET A NEW PASSWORD</span>
+                                <p class="settings-description">Your email is verified. Choose a password you have not used here before.</p>
+                                <form onsubmit="app.completePasswordChange(event)">
+                                    <div class="form-group"><label class="form-label" for="settingsNewPassword">New password</label><div class="password-field"><input id="settingsNewPassword" class="form-control" type="password" minlength="10" maxlength="72" autocomplete="new-password" required><button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" onclick="app.togglePasswordVisibility('settingsNewPassword', this)">Show</button></div><small class="auth-hint">Use at least 10 characters (maximum 72).</small></div>
+                                    <div class="form-group"><label class="form-label" for="settingsConfirmPassword">Confirm new password</label><div class="password-field"><input id="settingsConfirmPassword" class="form-control" type="password" minlength="10" maxlength="72" autocomplete="new-password" required><button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" onclick="app.togglePasswordVisibility('settingsConfirmPassword', this)">Show</button></div></div>
+                                    <div class="security-actions"><button class="btn btn-primary" type="submit">Update password</button></div>
+                                </form>
+                            </div>
+                            <p class="security-feedback" id="passwordChangeFeedback" role="status" aria-live="polite"></p>
+                            <button class="auth-text-button security-cancel-link" id="passwordChangeCancel" type="button" onclick="app.cancelPasswordChange()">Cancel password change</button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -763,8 +910,8 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <!-- Custom JS Application Logic -->
-<script src="/js/api.js"></script>
-<script src="/js/app.js"></script>
+<script src="/js/api.js?v=universal-smart-split"></script>
+<script src="/js/app.js?v=universal-smart-split"></script>
 
 </body>
 </html>
