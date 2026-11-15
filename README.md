@@ -229,5 +229,3 @@ SpendWise is developed as a full-stack academic project to demonstrate Java prog
 
 **Project:** SpendWise  
 **Tagline:** Track your money. Split the moments.
-
-**Contributor:** Hanu Verma
