@@ -18,6 +18,8 @@ public class GroupExpense {
     private String notes;
     private LocalDateTime createdAt;
     private List<ExpenseSplit> splits = new ArrayList<>();
+    private List<ExpenseItem> items = new ArrayList<>();
+    private List<ExpenseContribution> contributions = new ArrayList<>();
 
     public GroupExpense() {}
 
@@ -120,4 +122,9 @@ public class GroupExpense {
     public void setSplits(List<ExpenseSplit> splits) {
         this.splits = splits;
     }
+
+    public List<ExpenseItem> getItems() { return items; }
+    public void setItems(List<ExpenseItem> items) { this.items = items; }
+    public List<ExpenseContribution> getContributions() { return contributions; }
+    public void setContributions(List<ExpenseContribution> contributions) { this.contributions = contributions; }
 }

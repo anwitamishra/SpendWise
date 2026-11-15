@@ -58,7 +58,8 @@ public class DashboardService {
         Map<String, BigDecimal> totals = transactionRepository.getTotals(user.getId(), startDate, endDate);
         BigDecimal totalIncome = totals.getOrDefault("INCOME", BigDecimal.ZERO).setScale(2, java.math.RoundingMode.HALF_UP);
         BigDecimal totalExpenses = totals.getOrDefault("EXPENSE", BigDecimal.ZERO).setScale(2, java.math.RoundingMode.HALF_UP);
-        BigDecimal netBalance = totalIncome.subtract(totalExpenses).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal netBalance = totalIncome.subtract(totalExpenses).max(BigDecimal.ZERO)
+            .setScale(2, java.math.RoundingMode.HALF_UP);
 
         // Spending by category
         Map<String, BigDecimal> categoryExpenses = transactionRepository.getCategoryExpenses(user.getId(), startDate, endDate);

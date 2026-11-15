@@ -6,6 +6,7 @@ class SpendWiseApp {
     constructor() {
         this.currentView = 'dashboard';
         this.currentGroupId = null;
+        this.currentGroupTab = 'overview';
         this.groupMembers = [];
         this.chartCategoryDonut = null;
         this.chartMonthlyBar = null;
@@ -34,7 +35,16 @@ class SpendWiseApp {
     async init() {
         this.setTheme(document.documentElement.dataset.theme || 'light', false);
         const user = await window.api.initGuest();
-        this.updateProfileUI(user.displayName);
+        this.updateProfileUI(user.displayName, user);
+        const resetHash = window.location.hash.match(/^#reset-password\?token=(.+)$/);
+        if (resetHash) {
+            this.authResetToken = decodeURIComponent(resetHash[1]);
+            this.showAuthGate('reset');
+        } else if (window.api.token || localStorage.getItem('spendwise_mode') === 'guest') {
+            this.hideAuthGate();
+        } else {
+            this.showAuthGate('login');
+        }
 
         // Bind hash change listener
         window.addEventListener('hashchange', () => this.handleHashChange());
@@ -74,17 +84,268 @@ class SpendWiseApp {
         this.setTheme(currentTheme === 'dark' ? 'light' : 'dark');
     }
 
-    updateProfileUI(name) {
+    updateProfileUI(name, user = window.api.user) {
         const initial = (name && name.length > 0) ? name.charAt(0).toUpperCase() : 'G';
         const avatarEl = document.getElementById('sidebarAvatar');
         const nameEl = document.getElementById('sidebarUserName');
         const settingsNameEl = document.getElementById('settingsDisplayName');
         const settingsIdEl = document.getElementById('settingsGuestId');
+        const settingsEmailEl = document.getElementById('settingsEmail');
+        const settingsUsernameEl = document.getElementById('settingsUsername');
+        const accountStatusEl = document.getElementById('sidebarAccountStatus');
+        const accountTypeEl = document.getElementById('settingsAccountType');
+        const memberSinceEl = document.getElementById('settingsMemberSince');
+        const guestActions = document.getElementById('settingsGuestActions');
+        const accountActions = document.getElementById('settingsAccountActions');
+        const securityDescription = document.getElementById('settingsSecurityDescription');
+        const isAccount = Boolean(user?.email);
 
         if (avatarEl) avatarEl.textContent = initial;
         if (nameEl) nameEl.textContent = name;
         if (settingsNameEl) settingsNameEl.value = name;
         if (settingsIdEl) settingsIdEl.value = window.api.guestId;
+        if (settingsEmailEl) settingsEmailEl.value = user?.email || '';
+        if (settingsUsernameEl) settingsUsernameEl.value = user?.username || '';
+        if (accountStatusEl) accountStatusEl.textContent = isAccount ? 'Account' : 'Guest Session';
+        if (accountTypeEl) accountTypeEl.textContent = isAccount ? 'Registered account' : 'Guest session';
+        if (memberSinceEl) {
+            const createdValue = user?.createdAt;
+            const created = Array.isArray(createdValue)
+                ? new Date(createdValue[0], (createdValue[1] || 1) - 1, createdValue[2] || 1)
+                : (createdValue ? new Date(createdValue) : null);
+            memberSinceEl.textContent = created && !Number.isNaN(created.getTime())
+                ? created.toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : '—';
+        }
+        if (guestActions) guestActions.hidden = isAccount;
+        if (accountActions) accountActions.hidden = !isAccount;
+        if (securityDescription) securityDescription.textContent = isAccount
+            ? 'Update your password regularly to keep your financial profile protected.'
+            : 'Create an account to secure your profile and access it across sessions.';
+    }
+
+    showAuthGate(mode = 'login') {
+        const panel = document.getElementById(`auth${mode.charAt(0).toUpperCase()}${mode.slice(1)}Panel`);
+        if (!panel) mode = 'login';
+        document.querySelectorAll('[data-auth-panel]').forEach(item => { item.hidden = true; });
+        const activePanel = document.getElementById(`auth${mode.charAt(0).toUpperCase()}${mode.slice(1)}Panel`);
+        if (activePanel) activePanel.hidden = false;
+        const feedback = document.getElementById('authFeedback');
+        if (feedback) { feedback.textContent = ''; feedback.classList.remove('success'); }
+        if (mode === 'register') {
+            const nameInput = document.getElementById('authRegisterName');
+            if (nameInput && !nameInput.value) nameInput.value = window.api.displayName === 'Friend' ? '' : window.api.displayName;
+        }
+        document.body.classList.add('auth-required');
+    }
+
+    hideAuthGate() {
+        document.body.classList.remove('auth-required');
+    }
+
+    showAuthFeedback(message, success = false) {
+        const feedback = document.getElementById('authFeedback');
+        if (!feedback) return;
+        feedback.textContent = message;
+        feedback.classList.toggle('success', success);
+    }
+
+    togglePasswordVisibility(inputId, button) {
+        const input = document.getElementById(inputId);
+        if (!input || !button) return;
+        const showing = input.type === 'password';
+        input.type = showing ? 'text' : 'password';
+        button.textContent = showing ? 'Hide' : 'Show';
+        button.setAttribute('aria-label', `${showing ? 'Hide' : 'Show'} password`);
+        button.setAttribute('aria-pressed', String(showing));
+    }
+
+    async submitLogin(event) {
+        event.preventDefault();
+        try {
+            const user = await window.api.login(
+                document.getElementById('authLoginEmail').value,
+                document.getElementById('authLoginPassword').value
+            );
+            this.finishAuthentication(user);
+        } catch (err) { this.showAuthFeedback(err.message); }
+    }
+
+    async submitRegister(event) {
+        event.preventDefault();
+        try {
+            const user = await window.api.register(
+                document.getElementById('authRegisterName').value.trim(),
+                document.getElementById('authRegisterUsername').value.trim(),
+                document.getElementById('authRegisterEmail').value,
+                document.getElementById('authRegisterPassword').value
+            );
+            this.finishAuthentication(user);
+        } catch (err) { this.showAuthFeedback(err.message); }
+    }
+
+    async submitForgotPassword(event) {
+        event.preventDefault();
+        try {
+            await window.api.forgotPassword(document.getElementById('authForgotEmail').value);
+            this.showAuthFeedback('If an account exists for that email, a reset link has been sent.', true);
+        } catch (err) { this.showAuthFeedback(err.message); }
+    }
+
+    async submitResetPassword(event) {
+        event.preventDefault();
+        try {
+            await window.api.resetPassword(this.authResetToken, document.getElementById('authResetPassword').value);
+            this.showAuthGate('login');
+            this.showAuthFeedback('Password updated. Sign in with your new password.', true);
+            window.location.hash = '#login';
+        } catch (err) { this.showAuthFeedback(err.message); }
+    }
+
+    finishAuthentication(user) {
+        this.updateProfileUI(user.displayName, user);
+        this.hideAuthGate();
+        window.location.hash = '#dashboard';
+        this.handleHashChange();
+        this.showToast('You are signed in.');
+    }
+
+    async continueAsGuest() {
+        localStorage.setItem('spendwise_mode', 'guest');
+        const user = await window.api.initGuest();
+        this.updateProfileUI(user.displayName, user);
+        this.hideAuthGate();
+        window.location.hash = '#dashboard';
+        this.handleHashChange();
+    }
+
+    openAuthGate(mode = 'login') {
+        this.showAuthGate(mode);
+    }
+
+    async signOut() {
+        try {
+            await window.api.logout();
+            const guest = await window.api.initGuest();
+            this.updateProfileUI(guest.displayName, guest);
+            this.showAuthGate('login');
+        } catch (err) { this.showToast(err.message, 'error'); }
+    }
+
+    async startPasswordChange() {
+        this.setPasswordChangeFeedback('');
+        try {
+            const result = await window.api.requestPasswordChangeOtp();
+            document.getElementById('passwordOtpMaskedEmail').textContent = result.maskedEmail;
+            document.getElementById('passwordChangeOtp').value = '';
+            document.getElementById('passwordChangeFlow').hidden = false;
+            document.getElementById('settingsStartPasswordChange').hidden = true;
+            document.getElementById('passwordOtpStep').hidden = false;
+            document.getElementById('passwordNewPasswordStep').hidden = true;
+            this.startPasswordOtpCountdown(result.expiresInSeconds, result.resendAfterSeconds);
+        } catch (err) {
+            this.showToast(err.message, 'error');
+        }
+    }
+
+    async resendPasswordChangeOtp() {
+        const resendButton = document.getElementById('passwordOtpResend');
+        if (resendButton?.disabled) return;
+        try {
+            const result = await window.api.requestPasswordChangeOtp();
+            document.getElementById('passwordOtpMaskedEmail').textContent = result.maskedEmail;
+            document.getElementById('passwordChangeOtp').value = '';
+            this.setPasswordChangeFeedback('A new verification code has been sent.', true);
+            this.startPasswordOtpCountdown(result.expiresInSeconds, result.resendAfterSeconds);
+        } catch (err) {
+            this.setPasswordChangeFeedback(err.message);
+        }
+    }
+
+    startPasswordOtpCountdown(expiresInSeconds, resendAfterSeconds) {
+        if (this.passwordOtpTimer) clearInterval(this.passwordOtpTimer);
+        this.passwordOtpRemaining = expiresInSeconds;
+        this.passwordOtpResendRemaining = resendAfterSeconds;
+        const resendButton = document.getElementById('passwordOtpResend');
+        if (resendButton) resendButton.disabled = this.passwordOtpResendRemaining > 0;
+        const renderCountdown = () => {
+            const countdown = document.getElementById('passwordOtpCountdown');
+            if (countdown) {
+                const minutes = Math.floor(this.passwordOtpRemaining / 60);
+                const seconds = this.passwordOtpRemaining % 60;
+                const expiration = this.passwordOtpRemaining > 0
+                    ? `Code expires in ${minutes}:${String(seconds).padStart(2, '0')}.`
+                    : 'Code expired. Request a new one.';
+                countdown.textContent = this.passwordOtpResendRemaining > 0
+                    ? `${expiration} Resend available in ${this.passwordOtpResendRemaining}s.`
+                    : `${expiration} You can request another code.`;
+            }
+            if (resendButton) resendButton.disabled = this.passwordOtpResendRemaining > 0;
+        };
+        renderCountdown();
+        this.passwordOtpTimer = setInterval(() => {
+            if (this.passwordOtpRemaining > 0) this.passwordOtpRemaining -= 1;
+            if (this.passwordOtpResendRemaining > 0) this.passwordOtpResendRemaining -= 1;
+            renderCountdown();
+            if (this.passwordOtpRemaining === 0 && this.passwordOtpResendRemaining === 0) {
+                clearInterval(this.passwordOtpTimer);
+                this.passwordOtpTimer = null;
+            }
+        }, 1000);
+    }
+
+    async verifyPasswordChangeOtp(event) {
+        event.preventDefault();
+        try {
+            await window.api.verifyPasswordChangeOtp(document.getElementById('passwordChangeOtp').value.trim());
+            if (this.passwordOtpTimer) clearInterval(this.passwordOtpTimer);
+            document.getElementById('passwordOtpStep').hidden = true;
+            document.getElementById('passwordNewPasswordStep').hidden = false;
+            this.setPasswordChangeFeedback('Email verified. You can now set a new password.', true);
+        } catch (err) { this.setPasswordChangeFeedback(err.message); }
+    }
+
+    async completePasswordChange(event) {
+        event.preventDefault();
+        const password = document.getElementById('settingsNewPassword').value;
+        const confirmation = document.getElementById('settingsConfirmPassword').value;
+        if (password.length < 10 || password.length > 72) {
+            this.setPasswordChangeFeedback('Password must be between 10 and 72 characters.');
+            return;
+        }
+        if (password !== confirmation) {
+            this.setPasswordChangeFeedback('The password fields do not match.');
+            return;
+        }
+        try {
+            const user = await window.api.completePasswordChange(password);
+            this.updateProfileUI(user.displayName, user);
+            this.resetPasswordChangeFlow();
+            this.showToast('Password changed successfully.');
+        } catch (err) { this.setPasswordChangeFeedback(err.message); }
+    }
+
+    cancelPasswordChange() {
+        this.resetPasswordChangeFlow();
+    }
+
+    resetPasswordChangeFlow() {
+        if (this.passwordOtpTimer) clearInterval(this.passwordOtpTimer);
+        this.passwordOtpTimer = null;
+        document.getElementById('passwordChangeFlow').hidden = true;
+        document.getElementById('settingsStartPasswordChange').hidden = false;
+        document.getElementById('passwordOtpStep').hidden = true;
+        document.getElementById('passwordNewPasswordStep').hidden = true;
+        document.getElementById('passwordChangeCancel').hidden = false;
+        document.getElementById('passwordChangeOtp').value = '';
+        document.getElementById('passwordNewPasswordStep').querySelector('form')?.reset();
+        this.setPasswordChangeFeedback('');
+    }
+
+    setPasswordChangeFeedback(message, success = false) {
+        const feedback = document.getElementById('passwordChangeFeedback');
+        if (!feedback) return;
+        feedback.textContent = message;
+        feedback.classList.toggle('success', success);
     }
 
     // ========================================================
@@ -115,7 +376,9 @@ class SpendWiseApp {
         if (hash.startsWith('group?id=')) {
             const groupId = hash.split('id=')[1];
             if (groupId) {
-                this.currentGroupId = parseInt(groupId, 10);
+                const nextGroupId = parseInt(groupId, 10);
+                if (this.currentGroupId !== nextGroupId) this.currentGroupTab = 'overview';
+                this.currentGroupId = nextGroupId;
                 this.switchView('group-detail');
                 this.loadGroupDetail(this.currentGroupId);
                 return;
@@ -552,7 +815,7 @@ class SpendWiseApp {
         }).join('');
     }
 
-    openTransactionModal(editData = null) {
+    openTransactionModal(editData = null, initialType = null) {
         const titleEl = document.getElementById('txModalTitle');
         const idEl = document.getElementById('txId');
         const titleInput = document.getElementById('txTitle');
@@ -575,7 +838,7 @@ class SpendWiseApp {
             amountInput.value = '';
             dateInput.value = new Date().toISOString().split('T')[0];
             descInput.value = '';
-            this.setTxType('EXPENSE');
+            this.setTxType(initialType || 'EXPENSE');
         }
 
         this.openModal('modalTransaction');
@@ -806,11 +1069,12 @@ class SpendWiseApp {
     // ========================================================
     async loadGroupDetail(groupId) {
         try {
-            const [group, members, balancesData, expenses] = await Promise.all([
+            const [group, members, balancesData, expenses, settlements] = await Promise.all([
                 window.api.getGroup(groupId),
                 window.api.getGroupMembers(groupId),
                 window.api.getGroupBalances(groupId),
-                window.api.getGroupExpenses(groupId)
+                window.api.getGroupExpenses(groupId),
+                window.api.getSettlements(groupId)
             ]);
 
             this.currentGroup = group;
@@ -824,6 +1088,8 @@ class SpendWiseApp {
             // Total spent in group
             const totalSpent = expenses.reduce((sum, e) => sum + parseFloat(e.totalAmount || 0), 0);
             document.getElementById('gdTotalSpentBadge').textContent = `Total Spent: ${this.formatMoney(totalSpent)}`;
+            document.getElementById('gdOverviewSpent').textContent = this.formatMoney(totalSpent);
+            document.getElementById('gdOverviewMembers').textContent = String(members.length);
 
             // Render Balances
             this.renderGroupBalances(balancesData.balances || []);
@@ -833,11 +1099,250 @@ class SpendWiseApp {
 
             // Render Expenses List
             this.renderGroupExpenses(expenses || []);
+            this.renderTrackedSettlements(settlements || []);
+            this.showGroupTab(this.currentGroupTab || 'overview');
+            this.renderSmartSplitMethod();
+            if (this.currentGroupTab === 'smart-split') this.loadGroupReceipts(groupId);
 
         } catch (err) {
             this.showToast('Failed to load group details: ' + err.message, 'error');
             this.navigate('groups');
         }
+    }
+
+    showGroupTab(tab) {
+        const valid = ['overview', 'expenses', 'balances', 'smart-split'];
+        this.currentGroupTab = valid.includes(tab) ? tab : 'overview';
+        document.querySelectorAll('.group-tab').forEach(button => {
+            const active = button.dataset.groupTab === this.currentGroupTab;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-selected', String(active));
+        });
+        document.querySelectorAll('.group-tab-panel').forEach(panel => panel.classList.remove('active'));
+        const panelId = `gdTab${this.currentGroupTab.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('')}`;
+        document.getElementById(panelId)?.classList.add('active');
+        if (this.currentGroupTab === 'smart-split' && this.currentGroupId) {
+            this.populateSmartSplitPayer();
+            this.loadGroupReceipts(this.currentGroupId);
+        }
+    }
+
+    renderTrackedSettlements(settlements) {
+        const container = document.getElementById('gdTrackedSettlements');
+        if (!container) return;
+        if (!settlements.length) {
+            container.innerHTML = '<p class="empty-state-text">No settlement records yet. Generate a plan from the optimized suggestions.</p>';
+            return;
+        }
+        container.innerHTML = settlements.map(settlement => `
+            <div class="tracked-settlement-row">
+                <div><strong>${this.escapeHtml(settlement.fromMemberName)}</strong><span> pays </span><strong>${this.escapeHtml(settlement.toMemberName)}</strong><small>${settlement.status === 'COMPLETED' ? `Completed ${this.escapeHtml(settlement.settledDate || '')}` : 'Awaiting confirmation'}</small></div>
+                <div class="tracked-settlement-actions"><strong>${this.formatMoney(settlement.amount)}</strong>${settlement.status === 'PENDING' ? `<button class="btn btn-primary btn-sm" onclick="app.completeSettlement(${settlement.id})">Mark paid</button>` : '<span class="badge badge-settled">Completed</span>'}</div>
+            </div>
+        `).join('');
+    }
+
+    async generateSettlementPlan() {
+        try {
+            const settlements = await window.api.generateSettlementPlan(this.currentGroupId);
+            this.renderTrackedSettlements(settlements);
+            this.showToast('Optimized pending settlement plan updated.');
+            this.loadGroupDetail(this.currentGroupId);
+        } catch (err) { this.showToast(err.message, 'error'); }
+    }
+
+    async completeSettlement(settlementId) {
+        try {
+            await window.api.completeSettlement(this.currentGroupId, settlementId);
+            this.showToast('Settlement marked complete.');
+            this.loadGroupDetail(this.currentGroupId);
+        } catch (err) { this.showToast(err.message, 'error'); }
+    }
+
+    populateSmartSplitPayer() {
+        const payer = document.getElementById('smartSplitPayer');
+        if (!payer || !this.groupMembers.length) return;
+        const previous = payer.value;
+        payer.innerHTML = this.groupMembers.map(member => `<option value="${member.id}">${this.escapeHtml(member.displayName)}</option>`).join('');
+        if (previous && this.groupMembers.some(member => String(member.id) === previous)) payer.value = previous;
+        if (!document.getElementById('smartSplitDate').value) document.getElementById('smartSplitDate').value = new Date().toISOString().split('T')[0];
+    }
+
+    renderSmartSplitMethod() {
+        const container = document.getElementById('smartSplitAllocations');
+        const method = document.getElementById('smartSplitMethod')?.value || 'EQUAL';
+        if (!container || !this.groupMembers.length) return;
+        const totalInput = document.getElementById('smartSplitAmount');
+        const totalLabel = document.querySelector('label[for="smartSplitAmount"]');
+        const payerField = document.getElementById('smartSplitPayerField');
+        const payerSelect = document.getElementById('smartSplitPayer');
+        if (totalInput) totalInput.readOnly = method === 'CONTRIBUTION_EQUAL';
+        if (totalLabel) totalLabel.textContent = method === 'CONTRIBUTION_EQUAL' ? 'Calculated total (₹)' : 'Total amount (₹)';
+        if (payerField) payerField.hidden = method === 'CONTRIBUTION_EQUAL';
+        if (payerSelect) payerSelect.required = method !== 'CONTRIBUTION_EQUAL';
+        if (method === 'CONTRIBUTION_EQUAL') {
+            container.innerHTML = `<p class="smart-field-label">Enter what each group member paid. SpendWise adds these amounts and shares the total equally among all group members.</p><div class="smart-allocation-list">${this.groupMembers.map(member => `<label class="smart-allocation-row"><span>${this.escapeHtml(member.displayName)} paid</span><div class="smart-allocation-input"><span>₹</span><input class="form-control smart-member-paid" data-member-id="${member.id}" type="number" min="0" step="0.01" value="0" oninput="app.updateSmartSplitPreview()"></div></label>`).join('')}</div>`;
+        } else if (method === 'EQUAL') {
+            container.innerHTML = `<p class="smart-field-label">Choose who shares this expense</p><div class="smart-member-grid">${this.groupMembers.map(member => `<label class="smart-member-choice"><input class="smart-equal-member" type="checkbox" value="${member.id}" checked><span>${this.escapeHtml(member.displayName)}</span></label>`).join('')}</div>`;
+        } else if (method === 'CUSTOM' || method === 'PERCENTAGE') {
+            const unit = method === 'PERCENTAGE' ? '%' : '₹';
+            const step = method === 'PERCENTAGE' ? '0.0001' : '0.01';
+            container.innerHTML = `<p class="smart-field-label">${method === 'PERCENTAGE' ? 'Enter a percentage for each person (must total 100%).' : 'Set each person’s exact share (shares must equal the total).'}</p><div class="smart-allocation-list">${this.groupMembers.map(member => `<label class="smart-allocation-row"><span>${this.escapeHtml(member.displayName)}</span><div class="smart-allocation-input"><input class="form-control smart-member-allocation" data-member-id="${member.id}" type="number" min="0" step="${step}" value="0" oninput="app.updateSmartSplitPreview()"><span>${unit}</span></div></label>`).join('')}</div>`;
+        } else {
+            container.innerHTML = `<p class="smart-field-label">Add each bill line and select who consumed or shares it. Each line is divided equally among its selected members.</p><div id="smartSplitItems"></div><button class="btn btn-outline btn-sm" type="button" onclick="app.addSmartSplitItemRow()">+ Add bill item</button>`;
+            this.addSmartSplitItemRow();
+        }
+        container.querySelectorAll('input').forEach(input => input.addEventListener('change', () => this.updateSmartSplitPreview()));
+        this.updateSmartSplitPreview();
+    }
+
+    addSmartSplitItemRow(existingItem = null) {
+        const container = document.getElementById('smartSplitItems');
+        if (!container) return;
+        const memberOptions = this.groupMembers.map(member => `<option value="${member.id}">${this.escapeHtml(member.displayName)}</option>`).join('');
+        const row = document.createElement('div');
+        row.className = 'smart-item-row';
+        row.innerHTML = `<div class="form-row"><div class="form-group"><label class="form-label">Item</label><input class="form-control smart-item-description" maxlength="150" placeholder="e.g. Shared starter" required></div><div class="form-group"><label class="form-label">Amount (₹)</label><input class="form-control smart-item-amount" type="number" min="0.01" step="0.01" placeholder="0.00" oninput="app.updateSmartSplitPreview()" required></div></div><div class="form-group"><label class="form-label">Assigned members</label><select class="form-control form-select smart-item-members" multiple size="${Math.min(4, this.groupMembers.length)}">${memberOptions}</select><small class="auth-hint">Use Command-click (Mac) or Ctrl-click to select multiple members.</small></div><button class="auth-text-button smart-remove-item" type="button">Remove item</button>`;
+        row.querySelector('.smart-remove-item').addEventListener('click', () => { row.remove(); this.updateSmartSplitPreview(); });
+        row.querySelector('.smart-item-members').addEventListener('change', () => this.updateSmartSplitPreview());
+        container.appendChild(row);
+        if (existingItem) {
+            row.querySelector('.smart-item-description').value = existingItem.description || '';
+            row.querySelector('.smart-item-amount').value = existingItem.amount || '';
+            const assignedIds = new Set((existingItem.memberIds || []).map(String));
+            Array.from(row.querySelector('.smart-item-members').options).forEach(option => { option.selected = assignedIds.has(option.value); });
+        }
+    }
+
+    updateSmartSplitPreview() {
+        const preview = document.getElementById('smartSplitPreview');
+        if (!preview) return;
+        const total = Number(document.getElementById('smartSplitAmount')?.value || 0);
+        const method = document.getElementById('smartSplitMethod')?.value || 'EQUAL';
+        let detail = '';
+        let detailIsHtml = false;
+        if (method === 'CONTRIBUTION_EQUAL') {
+            const paidInputs = Array.from(document.querySelectorAll('.smart-member-paid'));
+            const paidCentsByMember = new Map(paidInputs.map(input => [Number(input.dataset.memberId), Math.round(Number(input.value || 0) * 100)]));
+            const totalCents = Array.from(paidCentsByMember.values()).reduce((sum, cents) => sum + cents, 0);
+            const paidTotal = totalCents / 100;
+            const amountInput = document.getElementById('smartSplitAmount');
+            if (amountInput) amountInput.value = paidTotal.toFixed(2);
+            const memberCount = this.groupMembers.length;
+            const baseShareCents = memberCount ? Math.floor(totalCents / memberCount) : 0;
+            const remainderCents = memberCount ? totalCents % memberCount : 0;
+            const debtors = [];
+            const creditors = [];
+            const memberDetails = this.groupMembers.map((member, index) => {
+                const paidCents = paidCentsByMember.get(member.id) || 0;
+                const shareCents = baseShareCents + (index < remainderCents ? 1 : 0);
+                const netCents = paidCents - shareCents;
+                if (netCents < 0) debtors.push({ member, cents: -netCents });
+                if (netCents > 0) creditors.push({ member, cents: netCents });
+                return `<div>${this.escapeHtml(member.displayName)}: paid ${this.formatMoney(paidCents / 100)} · share ${this.formatMoney(shareCents / 100)}</div>`;
+            });
+            const transfers = [];
+            while (debtors.length && creditors.length) {
+                const debtor = debtors[0];
+                const creditor = creditors[0];
+                const cents = Math.min(debtor.cents, creditor.cents);
+                transfers.push(`<div>${this.escapeHtml(debtor.member.displayName)} pays ${this.escapeHtml(creditor.member.displayName)} ${this.formatMoney(cents / 100)}</div>`);
+                debtor.cents -= cents;
+                creditor.cents -= cents;
+                if (debtor.cents === 0) debtors.shift();
+                if (creditor.cents === 0) creditors.shift();
+            }
+            const paymentSummary = totalCents === 0
+                ? '<div>Enter paid amounts to calculate who owes whom.</div>'
+                : transfers.length ? transfers.join('') : '<div>No payments needed for this split.</div>';
+            detail = `<div>${this.formatMoney(paidTotal)} total · split across ${memberCount} members</div><div class="smart-preview-members">${memberDetails.join('')}</div><div class="smart-preview-payments"><strong>Suggested payments</strong>${paymentSummary}</div>`;
+            detailIsHtml = true;
+        } else if (method === 'EQUAL') {
+            const count = document.querySelectorAll('.smart-equal-member:checked').length;
+            detail = count ? `${count} member${count === 1 ? '' : 's'} · about ${this.formatMoney(total / count)} each` : 'Select at least one member';
+        } else if (method === 'CUSTOM') {
+            const allocated = Array.from(document.querySelectorAll('.smart-member-allocation')).reduce((sum, input) => sum + Number(input.value || 0), 0);
+            detail = `Allocated ${this.formatMoney(allocated)} of ${this.formatMoney(total)}${Math.abs(allocated - total) < 0.005 ? ' · balanced' : ''}`;
+        } else if (method === 'PERCENTAGE') {
+            const percentage = Array.from(document.querySelectorAll('.smart-member-allocation')).reduce((sum, input) => sum + Number(input.value || 0), 0);
+            detail = `${percentage.toFixed(2)}% allocated of 100%${Math.abs(percentage - 100) < 0.005 ? ' · balanced' : ''}`;
+        } else {
+            const rows = Array.from(document.querySelectorAll('.smart-item-row'));
+            const itemTotal = rows.reduce((sum, row) => sum + Number(row.querySelector('.smart-item-amount')?.value || 0), 0);
+            const assigned = rows.filter(row => row.querySelector('.smart-item-members')?.selectedOptions.length).length;
+            detail = `${rows.length} item${rows.length === 1 ? '' : 's'} · ${assigned} assigned · ${this.formatMoney(itemTotal)} of ${this.formatMoney(total)}`;
+        }
+        if (detailIsHtml) preview.innerHTML = detail;
+        else preview.textContent = detail;
+    }
+
+    async saveSmartSplit(event) {
+        event.preventDefault();
+        const method = document.getElementById('smartSplitMethod').value;
+        const amount = Number(document.getElementById('smartSplitAmount').value);
+        const payload = {
+            description: document.getElementById('smartSplitDescription').value.trim(),
+            totalAmount: amount,
+            paidBy: Number(document.getElementById('smartSplitPayer').value),
+            expenseDate: document.getElementById('smartSplitDate').value,
+            notes: document.getElementById('smartSplitNotes').value.trim(),
+            splitType: method
+        };
+        if (method === 'CONTRIBUTION_EQUAL') {
+            payload.contributions = Array.from(document.querySelectorAll('.smart-member-paid')).map(input => ({
+                memberId: Number(input.dataset.memberId),
+                amountPaid: Number(input.value || 0)
+            }));
+            delete payload.paidBy;
+        } else if (method === 'EQUAL') {
+            payload.participantIds = Array.from(document.querySelectorAll('.smart-equal-member:checked')).map(input => Number(input.value));
+        } else if (method === 'CUSTOM' || method === 'PERCENTAGE') {
+            const key = method === 'CUSTOM' ? 'customSplits' : 'percentages';
+            payload[key] = Array.from(document.querySelectorAll('.smart-member-allocation')).map(input => ({ memberId: Number(input.dataset.memberId), shareAmount: Number(input.value || 0) }));
+        } else {
+            payload.items = Array.from(document.querySelectorAll('.smart-item-row')).map(row => ({
+                description: row.querySelector('.smart-item-description').value.trim(),
+                amount: Number(row.querySelector('.smart-item-amount').value),
+                memberIds: Array.from(row.querySelector('.smart-item-members').selectedOptions).map(option => Number(option.value))
+            }));
+        }
+        try {
+            const expenseId = document.getElementById('smartSplitExpenseId').value;
+            if (expenseId) {
+                await window.api.updateExpense(this.currentGroupId, expenseId, payload);
+                this.showToast('Shared expense updated.');
+            } else {
+                await window.api.createSmartSplit(this.currentGroupId, payload);
+                this.showToast('Shared expense split and saved.');
+            }
+            document.getElementById('smartSplitForm').reset();
+            document.getElementById('smartSplitExpenseId').value = '';
+            document.getElementById('smartSplitDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('smartSplitMethod').value = 'EQUAL';
+            this.renderSmartSplitMethod();
+            this.loadGroupDetail(this.currentGroupId);
+        } catch (err) { this.showToast(err.message, 'error'); }
+    }
+
+    async uploadGroupReceipt(event) {
+        event.preventDefault();
+        const input = document.getElementById('groupReceiptFile');
+        if (!input.files?.length) return;
+        try {
+            await window.api.uploadGroupReceipt(this.currentGroupId, input.files[0]);
+            input.value = '';
+            this.showToast('Receipt saved for future expense extraction.');
+            this.loadGroupReceipts(this.currentGroupId);
+        } catch (err) { this.showToast(err.message, 'error'); }
+    }
+
+    async loadGroupReceipts(groupId) {
+        try {
+            const receipts = await window.api.getGroupReceipts(groupId);
+            const container = document.getElementById('groupReceiptList');
+            if (!container) return;
+            container.innerHTML = receipts.length ? receipts.map(receipt => `<div class="receipt-list-item"><span class="receipt-file-icon">${receipt.contentType === 'application/pdf' ? 'PDF' : 'IMG'}</span><div><strong>${this.escapeHtml(receipt.originalFilename)}</strong><small>${(receipt.fileSize / 1024).toFixed(0)} KB · saved privately</small></div></div>`).join('') : '<p class="empty-state-text">No receipts uploaded yet.</p>';
+        } catch (err) { this.showToast('Could not load receipt list: ' + err.message, 'error'); }
     }
 
     copyInviteCode() {
@@ -954,6 +1459,13 @@ class SpendWiseApp {
                     ${this.escapeHtml(s.memberName)}: ${this.formatMoney(s.shareAmount)}
                 </span>
             `).join('');
+            const itemSummary = (exp.items || []).map(item => {
+                const memberNames = (item.memberIds || []).map(id => this.groupMembers.find(member => member.id === id)?.displayName || 'Member').join(', ');
+                return `<span class="expense-item-chip"><strong>${this.escapeHtml(item.description)}</strong> ${this.formatMoney(item.amount)} · ${this.escapeHtml(memberNames)}</span>`;
+            }).join('');
+            const payerSummary = (exp.contributions || []).length
+                ? (exp.contributions || []).map(contribution => `<div class="expense-payer-chip">${this.escapeHtml(contribution.memberName)}: ${this.formatMoney(contribution.amountPaid)}</div>`).join('')
+                : `<div style="font-weight:600; color:var(--burgundy); font-size:0.88rem;">${this.escapeHtml(exp.paidByName || 'Member')}</div>`;
 
             return `
                 <tr>
@@ -965,7 +1477,7 @@ class SpendWiseApp {
                         ${exp.notes ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">${this.escapeHtml(exp.notes)}</div>` : ''}
                     </td>
                     <td>
-                        <div style="font-weight:600; color:var(--burgundy); font-size:0.88rem;">${this.escapeHtml(exp.paidByName || 'Member')}</div>
+                        ${payerSummary}
                     </td>
                     <td>
                         <span class="badge ${splitBadgeClass}">${exp.splitType}</span>
@@ -977,6 +1489,7 @@ class SpendWiseApp {
                         <div style="display:flex; flex-wrap:wrap; justify-content:center; max-width:240px; margin:0 auto;">
                             ${splitsSummary}
                         </div>
+                        ${itemSummary ? `<div class="expense-item-summary">${itemSummary}</div>` : ''}
                     </td>
                     <td style="text-align:center; white-space:nowrap;">
                         <button class="btn btn-outline btn-sm" title="Edit" onclick="app.editExpense(${exp.id})">
@@ -1244,10 +1757,51 @@ class SpendWiseApp {
     async editExpense(expenseId) {
         try {
             const exp = await window.api.request(`/groups/${this.currentGroupId}/expenses/${expenseId}`);
-            this.openExpenseModal(exp);
+            this.openSmartSplitEditor(exp);
         } catch (err) {
             this.showToast('Failed to fetch expense: ' + err.message, 'error');
         }
+    }
+
+    openSmartSplitEditor(expense) {
+        this.showGroupTab('smart-split');
+        document.getElementById('smartSplitExpenseId').value = expense.id;
+        document.getElementById('smartSplitDescription').value = expense.description || '';
+        document.getElementById('smartSplitAmount').value = expense.totalAmount;
+        document.getElementById('smartSplitPayer').value = expense.paidBy;
+        document.getElementById('smartSplitDate').value = expense.expenseDate;
+        document.getElementById('smartSplitNotes').value = expense.notes || '';
+        document.getElementById('smartSplitMethod').value = expense.splitType || 'EQUAL';
+        this.renderSmartSplitMethod();
+        if (expense.splitType === 'EQUAL') {
+            const included = new Set((expense.splits || []).map(split => String(split.memberId)));
+            document.querySelectorAll('.smart-equal-member').forEach(input => { input.checked = included.has(input.value); });
+        } else if (expense.splitType === 'CUSTOM') {
+            const shares = new Map((expense.splits || []).map(split => [String(split.memberId), split.shareAmount]));
+            document.querySelectorAll('.smart-member-allocation').forEach(input => { input.value = shares.get(input.dataset.memberId) ?? 0; });
+        } else if (expense.splitType === 'PERCENTAGE') {
+            const total = Number(expense.totalAmount || 0);
+            const shares = expense.splits || [];
+            let assigned = 0;
+            document.querySelectorAll('.smart-member-allocation').forEach((input, index) => {
+                const share = shares.find(item => String(item.memberId) === input.dataset.memberId);
+                let percentage = share && total ? Number(share.shareAmount) / total * 100 : 0;
+                if (index === this.groupMembers.length - 1) percentage = Math.max(0, 100 - assigned);
+                percentage = Math.round(percentage * 10000) / 10000;
+                assigned += percentage;
+                input.value = percentage;
+            });
+        } else if (expense.splitType === 'CONTRIBUTION_EQUAL') {
+            const payments = new Map((expense.contributions || []).map(item => [String(item.memberId), item.amountPaid]));
+            document.querySelectorAll('.smart-member-paid').forEach(input => { input.value = payments.get(input.dataset.memberId) ?? 0; });
+        } else if (expense.splitType === 'ITEMIZED') {
+            const container = document.getElementById('smartSplitItems');
+            container.innerHTML = '';
+            (expense.items || []).forEach(item => this.addSmartSplitItemRow(item));
+            if (!expense.items?.length) this.addSmartSplitItemRow();
+        }
+        this.updateSmartSplitPreview();
+        this.showToast('Edit the split details and save your changes.');
     }
 
     confirmDeleteExpense(expenseId) {
@@ -1288,8 +1842,8 @@ class SpendWiseApp {
         }
 
         try {
-            await window.api.updateProfile(name);
-            this.updateProfileUI(name);
+            const user = await window.api.updateProfile(name);
+            this.updateProfileUI(name, user);
             this.closeModal('modalEditProfile');
             this.showToast('Profile updated!');
             if (this.currentView === 'group-detail' && this.currentGroupId) {
@@ -1308,8 +1862,8 @@ class SpendWiseApp {
         }
 
         try {
-            await window.api.updateProfile(name);
-            this.updateProfileUI(name);
+            const user = await window.api.updateProfile(name);
+            this.updateProfileUI(name, user);
             this.showToast('Profile updated successfully');
         } catch (err) {
             this.showToast(err.message, 'error');

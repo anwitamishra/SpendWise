@@ -30,6 +30,15 @@ public class GroupExpenseController {
                 .body(ApiResponse.ok("Expense added successfully", expense));
     }
 
+    @PostMapping("/smart-split")
+    public ResponseEntity<ApiResponse<GroupExpense>> createSmartSplit(
+            @RequestHeader("X-Guest-Id") String guestIdentifier,
+            @PathVariable Long groupId,
+            @RequestBody AddExpenseRequest request) {
+        GroupExpense expense = groupExpenseService.addExpense(guestIdentifier, groupId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Smart Split expense created", expense));
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<GroupExpense>>> getExpenses(
             @RequestHeader("X-Guest-Id") String guestIdentifier,

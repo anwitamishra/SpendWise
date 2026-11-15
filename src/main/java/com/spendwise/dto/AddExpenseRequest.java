@@ -14,6 +14,9 @@ public class AddExpenseRequest {
     private String notes;
     private List<Long> participantIds = new ArrayList<>();
     private List<CustomSplitItem> customSplits = new ArrayList<>();
+    private List<CustomSplitItem> percentages = new ArrayList<>();
+    private List<ExpenseItemRequest> items = new ArrayList<>();
+    private List<ExpenseContributionRequest> contributions = new ArrayList<>();
 
     public String getDescription() {
         return description;
@@ -78,4 +81,11 @@ public class AddExpenseRequest {
     public void setCustomSplits(List<CustomSplitItem> customSplits) {
         this.customSplits = customSplits;
     }
+
+    public List<CustomSplitItem> getPercentages() { return percentages; }
+    public void setPercentages(List<CustomSplitItem> percentages) { this.percentages = percentages; }
+    public List<ExpenseItemRequest> getItems() { return items; }
+    public void setItems(List<ExpenseItemRequest> items) { this.items = items; }
+    public List<ExpenseContributionRequest> getContributions() { return contributions; }
+    public void setContributions(List<ExpenseContributionRequest> contributions) { this.contributions = contributions; }
 }

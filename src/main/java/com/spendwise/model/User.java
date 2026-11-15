@@ -6,6 +6,8 @@ public class User {
     private Long id;
     private String displayName;
     private String guestIdentifier;
+    private String username;
+    private String email;
     private LocalDateTime createdAt;
 
     public User() {}
@@ -39,6 +41,22 @@ public class User {
 
     public void setGuestIdentifier(String guestIdentifier) {
         this.guestIdentifier = guestIdentifier;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public LocalDateTime getCreatedAt() {
